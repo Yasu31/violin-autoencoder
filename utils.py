@@ -64,6 +64,7 @@ def test_ae_with_audio(audio_filenames, ae_model):
 
 def visualizeAE(filename, autoencoder, encoder):
     """Visualize the input, latent space, and output of the autoencoder.
+    Returns autoencoder and encoder output as numpy arrays.
     """
     audio, sr = librosa.load(filename)
     stft_np = audio2stft(audio, sr)
@@ -75,10 +76,12 @@ def visualizeAE(filename, autoencoder, encoder):
     
     outputs_latent = encoder(inputs)
     
-    print("Input(original audio):")
+    print(f"Input(original audio) ({inputs.shape[1]} x {inputs.shape[0]}):")
     ipd.display(ipd.Audio(audio, rate=sr))
     
-    print("Latent space visualized:")
+    print(f"Latent space ({outputs_latent.shape[1]} x {outputs_latent.shape[0]}):")
+    print(f"expected file size: {outputs_latent.shape[0]*outputs_latent.shape[1] * 32 / 8 / 1000} kB")
+    print("visualization:")
     plt.figure(figsize=(10,2))
     plt.xlabel("timestep")
     plt.ylabel("latent space encoding")
@@ -87,3 +90,5 @@ def visualizeAE(filename, autoencoder, encoder):
     
     print("Output(audio reconstructed from autoencoder):")
     ipd.display(ipd.Audio(reconstructed_audio, rate=sr))
+
+    return outputs_np, outputs_latent.detach().numpy()
