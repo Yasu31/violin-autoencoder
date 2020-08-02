@@ -9,21 +9,23 @@ HOP_LENGTH = 512
 N_FFT = 2048
 
 
-def audio2stft(raw_audio, sr):
+def audio2stft(raw_audio, sr, debug=False):
     """convert audio file to a 2D array representing the spectrogram of short-time fourier transforms.
     This data can be fed into the NN, since it is probably easier to deal with than raw waveform data.
     Please note that the returned data does not contain all the data of the original waveform- the phase data is discarded for sake of simplicity.    Args:
         raw_audio: waveform data
         sr: sampling rate
     """
-    print(
-        f"Input audio:\nsamples:\t{raw_audio.shape[0]}\nsampling rate:\t{sr}\nduration:\t{raw_audio.shape[0]/sr}")
-    print("-"*10)
+    if debug:
+        print(
+            f"Input audio:\nsamples:\t{raw_audio.shape[0]}\nsampling rate:\t{sr}\nduration:\t{raw_audio.shape[0]/sr}")
+        print("-"*10)
     stft = librosa.stft(raw_audio, n_fft=N_FFT, hop_length=HOP_LENGTH)
     stft = np.abs(stft)
-    print(
-        f"Resulting STFT:\nsamples:\t{stft.shape[1]}\nfrequency is split into {stft.shape[0]} parts.")
-    print("="*10)
+    if debug:
+        print(
+            f"Resulting STFT:\nsamples:\t{stft.shape[1]}\nfrequency is split into {stft.shape[0]} parts.")
+        print("="*10)
     return stft
 
 
@@ -47,12 +49,11 @@ def stft2audio(stft):
 
 def test_ae_with_audio(audio_filenames, ae_model):
     """Test the current autoencoder by passing test audio data and playing the result.
-    Loads the audio data from ./data/test/*.m4a
     """
     for filename in audio_filenames:
         print(f"playing {filename}...")
         # format data for input into AE
-        audio, sr = librosa.load(f"./data/test/{filename}.m4a")
+        audio, sr = librosa.load(filename)
         stft_np = audio2stft(audio, sr)
         data = torch.from_numpy(stft_np.transpose())
         # pass through AE and convert back to audio
@@ -60,3 +61,29 @@ def test_ae_with_audio(audio_filenames, ae_model):
         output_np = output.detach().numpy().transpose()
         reconstructed_audio = stft2audio(output_np)
         ipd.display(ipd.Audio(reconstructed_audio, rate=sr))
+
+def visualizeAE(filename, autoencoder, encoder):
+    """Visualize the input, latent space, and output of the autoencoder.
+    """
+    audio, sr = librosa.load(filename)
+    stft_np = audio2stft(audio, sr)
+    inputs = torch.from_numpy(stft_np.transpose())
+    
+    outputs = autoencoder(inputs)
+    outputs_np = outputs.detach().numpy().transpose()
+    reconstructed_audio = stft2audio(outputs_np)
+    
+    outputs_latent = encoder(inputs)
+    
+    print("Input(original audio):")
+    ipd.display(ipd.Audio(audio, rate=sr))
+    
+    print("Latent space visualized:")
+    plt.figure(figsize=(10,2))
+    plt.xlabel("timestep")
+    plt.ylabel("latent space encoding")
+    plt.imshow(outputs_latent.view(1,-1,3).permute(2,1,0).detach(), aspect="auto", interpolation="nearest")
+    plt.show()
+    
+    print("Output(audio reconstructed from autoencoder):")
+    ipd.display(ipd.Audio(reconstructed_audio, rate=sr))
