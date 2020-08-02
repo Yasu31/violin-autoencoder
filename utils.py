@@ -4,6 +4,7 @@ import IPython.display as ipd
 import numpy as np
 import librosa
 import librosa.display
+import torch
 HOP_LENGTH = 512
 N_FFT = 2048
 
@@ -43,3 +44,19 @@ def stft2audio(stft):
     """
     reconstructed_audio = librosa.istft(stft)
     return reconstructed_audio
+
+def test_ae_with_audio(audio_filenames, ae_model):
+    """Test the current autoencoder by passing test audio data and playing the result.
+    Loads the audio data from ./data/test/*.m4a
+    """
+    for filename in audio_filenames:
+        print(f"playing {filename}...")
+        # format data for input into AE
+        audio, sr = librosa.load(f"./data/test/{filename}.m4a")
+        stft_np = audio2stft(audio, sr)
+        data = torch.from_numpy(stft_np.transpose())
+        # pass through AE and convert back to audio
+        output = ae_model(data)
+        output_np = output.detach().numpy().transpose()
+        reconstructed_audio = stft2audio(output_np)
+        ipd.display(ipd.Audio(reconstructed_audio, rate=sr))
